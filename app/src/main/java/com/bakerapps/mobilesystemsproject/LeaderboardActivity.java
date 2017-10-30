@@ -54,8 +54,6 @@ public class LeaderboardActivity extends AppCompatActivity {
 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                Log.i("snapshot", dataSnapshot.toString());
-                Log.i("snapshot", userName);
                 userScore = ((Long) dataSnapshot.child("distance").getValue()).intValue();
                 txtMyScore.setText(userName + ": " + userScore);
             }

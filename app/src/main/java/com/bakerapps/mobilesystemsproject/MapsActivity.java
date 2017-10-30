@@ -39,6 +39,11 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.firebase.database.DataSnapshot;
+import com.google.firebase.database.DatabaseError;
+import com.google.firebase.database.DatabaseReference;
+import com.google.firebase.database.FirebaseDatabase;
+import com.google.firebase.database.ValueEventListener;
 
 public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -57,6 +62,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private boolean mRequestingLocationUpdates = false;
     private SharedPreferences prefs;
     private FusedLocationProviderClient fusedLocationClient;
+    private Location previousLocation;
+    private DatabaseReference myDatabase;
+    private String userName;
 
     private DrawerLayout mDrawerLayout;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -74,6 +82,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else {
             Log.i("NAME", prefs.getString("userName", null));
         }
+
+        myDatabase = FirebaseDatabase.getInstance().getReference();
+        userName = prefs.getString("userName", "Anonymous");
 
         if(savedInstanceState != null){
             if(savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)){
@@ -256,6 +267,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onLocationChanged(Location location) {
+        if(previousLocation == null) previousLocation = location;
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
 
@@ -271,7 +283,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15));
 
-        Log.i("LOCATION CHANGED", "NOW");
+        /* Calculate distance approximately every 30 seconds */
+        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 > 30){
+            final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
+            final double distanceTravelled = previousLocation.distanceTo(location);
+            userReference.addListenerForSingleValueEvent(new ValueEventListener(){
+
+                @Override
+                public void onDataChange(DataSnapshot dataSnapshot) {
+                    double previousDistance = (double) dataSnapshot.child("distance").getValue();
+                    userReference.child("distance").setValue(previousDistance+distanceTravelled);
+                }
+
+                @Override
+                public void onCancelled(DatabaseError databaseError) {
+
+                }
+            });
+
+        }
     }
 
     @Override
