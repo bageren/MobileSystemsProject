@@ -54,7 +54,7 @@ public class LeaderboardActivity extends AppCompatActivity {
 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
-                userScore = ((Long) dataSnapshot.child("distance").getValue()).intValue();
+                userScore = ((Long) dataSnapshot.child("score").getValue()).intValue();
                 txtMyScore.setText(userName + ": " + userScore);
             }
 
@@ -73,7 +73,7 @@ public class LeaderboardActivity extends AppCompatActivity {
             public void onDataChange(DataSnapshot dataSnapshot) {
                 scores.clear();
                 for(DataSnapshot user : dataSnapshot.getChildren()){
-                    scores.add(user.child("displayName").getValue() + ": " + user.child("distance").getValue());
+                    scores.add(user.child("displayName").getValue() + ": " + user.child("score").getValue());
                 }
                 Collections.reverse(scores);
                 ArrayAdapter leaderboardAdapter = new ArrayAdapter(LeaderboardActivity.this, android.R.layout.simple_list_item_1, scores);

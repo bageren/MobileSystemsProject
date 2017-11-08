@@ -78,6 +78,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_maps);
 
         prefs = getSharedPreferences("BikeLife_Preferences", MODE_PRIVATE);
+        if (prefs.getString("userName", null) == null) {
             Intent intent = new Intent(this, WelcomeActivity.class);
             startActivity(intent);
         } else {
