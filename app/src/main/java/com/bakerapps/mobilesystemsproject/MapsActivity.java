@@ -54,6 +54,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private static String[] PERMISSION_LOCATIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
 
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestingLocationUpdatesBoolean";
+    private static final String TOTAL_DISTANCE_KEY = "totalDistanceDouble";
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -65,6 +66,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Location previousLocation;
     private DatabaseReference myDatabase;
     private String userName;
+    private double totalDistance = 0;
 
     private DrawerLayout mDrawerLayout;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -76,7 +78,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         setContentView(R.layout.activity_maps);
 
         prefs = getSharedPreferences("BikeLife_Preferences", MODE_PRIVATE);
-        if (prefs.getString("userName", null) == null) {
             Intent intent = new Intent(this, WelcomeActivity.class);
             startActivity(intent);
         } else {
@@ -84,11 +85,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
 
         myDatabase = FirebaseDatabase.getInstance().getReference();
-        userName = prefs.getString("userName", "Anonymous");
+        userName = prefs.getString("userName", null);
 
         if(savedInstanceState != null){
             if(savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)){
                 mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
+                totalDistance = savedInstanceState.getDouble(TOTAL_DISTANCE_KEY);
             }
         }
 
@@ -130,9 +132,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         mLocationRequest = LocationRequest.create();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
-        mLocationRequest.setInterval(5000);
-        mLocationRequest.setFastestInterval(1000);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        mLocationRequest.setInterval(10000);
+        mLocationRequest.setFastestInterval(5000);
 
         buildGoogleApiClient();
         mGoogleApiClient.connect();
@@ -266,7 +268,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     @Override
-    public void onLocationChanged(Location location) {
+    public void onLocationChanged(final Location location) {
+        Log.i("LOCATION", "CHANGED");
         if(previousLocation == null) previousLocation = location;
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
@@ -283,23 +286,35 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15));
 
-        /* Calculate distance approximately every 30 seconds */
-        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 > 30){
-            final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
+        /* Calculate distance approximately every 15 seconds */
+        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 > 15){
             final double distanceTravelled = previousLocation.distanceTo(location);
-            userReference.addListenerForSingleValueEvent(new ValueEventListener(){
+            totalDistance += distanceTravelled;
+            previousLocation = location;
+            Log.i("TRAVELLED", String.valueOf(distanceTravelled));
+            Log.i("DISTANCE", String.valueOf(totalDistance));
 
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    double previousDistance = (double) dataSnapshot.child("distance").getValue();
-                    userReference.child("distance").setValue(previousDistance+distanceTravelled);
-                }
+            if(totalDistance > 1000){
+                final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
+                userReference.addListenerForSingleValueEvent(new ValueEventListener(){
 
-                }
-            });
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                        Long newScore = previousScore+1;
+                        userReference.child("score").setValue(newScore);
+                        totalDistance = totalDistance-1000;
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
+
+
 
         }
     }
@@ -307,9 +322,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onPause() {
         super.onPause();
-        if(mRequestingLocationUpdates){
-            stopLocationUpdates();
-        }
+//        if(mRequestingLocationUpdates){
+//            stopLocationUpdates();
+//        }
     }
 
     protected void stopLocationUpdates() {
@@ -320,20 +335,22 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onResume() {
         super.onResume();
-        if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
-            startLocationUpdates();
-        }
+//        if (mGoogleApiClient.isConnected() && !mRequestingLocationUpdates) {
+//            startLocationUpdates();
+//        }
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
+        stopLocationUpdates();
         mGoogleApiClient.disconnect();
     }
 
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState){
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
+        savedInstanceState.putDouble(TOTAL_DISTANCE_KEY, totalDistance);
         super.onSaveInstanceState(savedInstanceState);
     }
 }

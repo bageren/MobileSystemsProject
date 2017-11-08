@@ -45,7 +45,7 @@ public class WelcomeActivity extends AppCompatActivity {
                     errorToast.show();
                 } else{
                     myDatabase.child("users").child(lowerCaseUserName).child("displayName").setValue(displayUserName);
-                    myDatabase.child("users").child(lowerCaseUserName).child("distance").setValue(0);
+                    myDatabase.child("users").child(lowerCaseUserName).child("score").setValue(0);
                     Toast successToast = Toast.makeText(getApplicationContext(), "Registration completed", Toast.LENGTH_SHORT);
                     successToast.show();
                     editor.putString("userName", displayUserName);
