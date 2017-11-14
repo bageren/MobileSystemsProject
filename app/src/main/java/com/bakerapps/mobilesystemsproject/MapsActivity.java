@@ -147,6 +147,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
+
+
+
+
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -159,7 +164,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        setDestination(); 
+        setDestination();
 //        try {
 //            fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
 //                @Override
@@ -188,9 +193,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void setDestination() {
 
 
-        //  double latitude = 55.370675;
-        //  double longitude = 10.428067;
-
         LatLng desUni = new LatLng(55.370675, 10.428067);
         mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
                 .position(desUni)
@@ -217,16 +219,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Elgiganten"));
 
-
-
         LatLng desRC = new LatLng(55.383743, 10.426433);
         mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
                 .position(desRC)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("RosengårdCentret"));
-
-
-
 
 
         LatLng desTEK = new LatLng(55.367259, 10.432076);
@@ -236,18 +233,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 .title("Det Tekniske Fakultet"));
 
 
-
-
-
-
         LatLng desOCC = new LatLng(55.371429, 10.449715);
         mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
                 .position(desOCC)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Odensec Congres Center"));
-
-
-
 
     }
 
@@ -381,6 +371,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         totalDistance = totalDistance-1000;
                     }
 
+
                     @Override
                     public void onCancelled(DatabaseError databaseError) {
 
@@ -388,10 +379,35 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 });
             }
 
+            if(totalDistance == 5000) {
+                final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
+                userReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                        Long newScore = previousScore+10;
+                        userReference.child("score").setValue(newScore);
 
+                        //Må kun udføres en gang dagligt!!
+
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
 
         }
+
+
+
+
     }
+
+
+
 
     @Override
     protected void onPause() {
