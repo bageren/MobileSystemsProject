@@ -3,7 +3,11 @@ package com.bakerapps.mobilesystemsproject;
 import android.*;
 import android.Manifest;
 import android.app.Activity;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
@@ -52,6 +56,8 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     // lOCATION Permissions
     private static final int REQUEST_LOCATIONS = 1;
     private static String[] PERMISSION_LOCATIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
+    public static final String ACTION_ACTIVITY_RECOGNIZED = "com.bakerapps.mobilesystemsproject.action.ACTIVITY_RECOGNIZED";
+    public static final String EXTRA_IN_VEHICLE = "com.bakerapps.activityrecognition.extra.IN_VEHICLE";
 
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestingLocationUpdatesBoolean";
     private static final String TOTAL_DISTANCE_KEY = "totalDistanceDouble";
@@ -71,6 +77,10 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private DrawerLayout mDrawerLayout;
     private ActionBarDrawerToggle mDrawerToggle;
     private ListView mDrawerList;
+
+    private BroadcastReceiver activityReceiver;
+    private PendingIntent pi;
+    private boolean inVehicle = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,6 +139,18 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setHomeButtonEnabled(true);
+
+        activityReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                inVehicle = intent.getBooleanExtra(EXTRA_IN_VEHICLE, false);
+            }
+        };
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction( ACTION_ACTIVITY_RECOGNIZED );
+
+        registerReceiver(activityReceiver, filter);
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
@@ -256,6 +278,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(!mRequestingLocationUpdates){
             startLocationUpdates();
         }
+        Intent i = new Intent(this,ActivityRecognitionService.class);
+        pi = PendingIntent.getService(this, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates( mGoogleApiClient, 10000, pi);
     }
 
     @Override
@@ -289,34 +314,31 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         /* Calculate distance approximately every 15 seconds */
         if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 > 15){
-            final double distanceTravelled = previousLocation.distanceTo(location);
-            totalDistance += distanceTravelled;
-            previousLocation = location;
-            Log.i("TRAVELLED", String.valueOf(distanceTravelled));
-            Log.i("DISTANCE", String.valueOf(totalDistance));
+            if(!inVehicle){
+                final double distanceTravelled = previousLocation.distanceTo(location);
+                totalDistance += distanceTravelled;
+                previousLocation = location;
 
-            if(totalDistance > 1000){
-                final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
+                if(totalDistance > 1000){
+                    final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
-                userReference.addListenerForSingleValueEvent(new ValueEventListener(){
+                    userReference.addListenerForSingleValueEvent(new ValueEventListener(){
 
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                        Long newScore = previousScore+1;
-                        userReference.child("score").setValue(newScore);
-                        totalDistance = totalDistance-1000;
-                    }
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+                            Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                            Long newScore = previousScore+1;
+                            userReference.child("score").setValue(newScore);
+                            totalDistance = totalDistance-1000;
+                        }
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
 
-                    }
-                });
+                        }
+                    });
+                }
             }
-
-
-
         }
     }
 
@@ -346,6 +368,9 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onDestroy();
         stopLocationUpdates();
         mGoogleApiClient.disconnect();
+        unregisterReceiver(activityReceiver);
+        ActivityRecognition.ActivityRecognitionApi.removeActivityUpdates(mGoogleApiClient, pi);
+        pi.cancel();
     }
 
     @Override
