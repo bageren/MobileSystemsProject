@@ -169,6 +169,11 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
 
+
+
+
+
+
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -181,6 +186,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
+        setDestination();
 //        try {
 //            fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
 //                @Override
@@ -202,6 +208,63 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 //        mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
 //        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
     }
+
+
+
+    // SET DESTINATION
+    public void setDestination() {
+
+
+        LatLng desUni = new LatLng(55.370675, 10.428067);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desUni)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("SDU"));
+
+        LatLng desBilka = new LatLng(55.378227, 10.431294);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desBilka)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("Bilka"));
+
+
+        LatLng desIkea = new LatLng(55.380549, 10.429609);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desIkea)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("IKEA"));
+
+
+        LatLng desElgiganten = new LatLng(55.381910, 10.424708);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desElgiganten)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("Elgiganten"));
+
+        LatLng desRC = new LatLng(55.383743, 10.426433);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desRC)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("RosengårdCentret"));
+
+
+        LatLng desTEK = new LatLng(55.367259, 10.432076);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desTEK)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("Det Tekniske Fakultet"));
+
+
+        LatLng desOCC = new LatLng(55.371429, 10.449715);
+        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+                .position(desOCC)
+                .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                .title("Odensec Congres Center"));
+
+    }
+
+
+
 
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
@@ -318,18 +381,17 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                 final double distanceTravelled = previousLocation.distanceTo(location);
                 totalDistance += distanceTravelled;
                 previousLocation = location;
+                final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
-                if(totalDistance > 1000){
-                    final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
-
-                    userReference.addListenerForSingleValueEvent(new ValueEventListener(){
+                if(totalDistance > 1000) {
+                    userReference.addListenerForSingleValueEvent(new ValueEventListener() {
 
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                            Long newScore = previousScore+1;
+                            Long newScore = previousScore + 1;
                             userReference.child("score").setValue(newScore);
-                            totalDistance = totalDistance-1000;
+                            totalDistance = totalDistance - 1000;
                         }
 
                         @Override
@@ -338,6 +400,25 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
                         }
                     });
                 }
+
+            if(totalDistance == 5000) {
+                userReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(DataSnapshot dataSnapshot) {
+                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                        Long newScore = previousScore+10;
+                        userReference.child("score").setValue(newScore);
+
+                        //Må kun udføres en gang dagligt!!
+
+                    }
+
+                    @Override
+                    public void onCancelled(DatabaseError databaseError) {
+
+                    }
+                });
+            }
             }
         }
     }
