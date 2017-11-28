@@ -8,5 +8,7 @@
     <string-array name="navigation_array">
         <item>Map</item>
         <item>Leaderboard</item>
+        <item>My Profile</item>
     </string-array>
+    <string name="title_activity_profile">ProfileActivity</string>
 </resources>

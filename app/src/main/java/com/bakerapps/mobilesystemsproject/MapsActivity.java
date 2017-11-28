@@ -21,6 +21,7 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
@@ -49,7 +50,11 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Calendar;
+
+public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
 
@@ -60,7 +65,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public static final String EXTRA_IN_VEHICLE = "com.bakerapps.activityrecognition.extra.IN_VEHICLE";
 
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestingLocationUpdatesBoolean";
-    private static final String TOTAL_DISTANCE_KEY = "totalDistanceDouble";
 
     private GoogleMap mMap;
     private GoogleApiClient mGoogleApiClient;
@@ -72,11 +76,6 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Location previousLocation;
     private DatabaseReference myDatabase;
     private String userName;
-    private double totalDistance = 0;
-
-    private DrawerLayout mDrawerLayout;
-    private ActionBarDrawerToggle mDrawerToggle;
-    private ListView mDrawerList;
 
     private BroadcastReceiver activityReceiver;
     private PendingIntent pi;
@@ -85,7 +84,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_maps);
+        //setContentView(R.layout.activity_maps);
+
+
+        LayoutInflater inflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View contentView = inflater.inflate(R.layout.activity_maps, null, false);
+        mDrawerLayout.addView(contentView, 0);
 
         prefs = getSharedPreferences("BikeLife_Preferences", MODE_PRIVATE);
         if (prefs.getString("userName", null) == null) {
@@ -101,49 +105,19 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         if(savedInstanceState != null){
             if(savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)){
                 mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
-                totalDistance = savedInstanceState.getDouble(TOTAL_DISTANCE_KEY);
             }
         }
-
-        mDrawerList = (ListView) findViewById(R.id.left_drawer);
-        mDrawerList.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                selectItem(i);
-            }
-
-            private void selectItem(int position) {
-                switch (position) {
-                    case 1:
-                        Intent leaderboardIntent = new Intent(MapsActivity.this, LeaderboardActivity.class);
-                        startActivity(leaderboardIntent);
-                }
-            }
-        });
-        mDrawerLayout = (DrawerLayout) findViewById(R.id.drawerLayout);
-        mDrawerToggle = new ActionBarDrawerToggle(this, mDrawerLayout, R.string.drawer_open, R.string.drawer_close) {
-            public void onDrawerClosed(View view) {
-                super.onDrawerClosed(view);
-                getSupportActionBar().setTitle("Map");
-                invalidateOptionsMenu();
-            }
-
-            public void onDrawerOpened(View view) {
-                super.onDrawerOpened(view);
-                getSupportActionBar().setTitle("Navigate");
-                invalidateOptionsMenu();
-            }
-        };
-
-        mDrawerLayout.addDrawerListener(mDrawerToggle);
-
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setHomeButtonEnabled(true);
 
         activityReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                inVehicle = intent.getBooleanExtra(EXTRA_IN_VEHICLE, false);
+                boolean isInVehicle = intent.getBooleanExtra(EXTRA_IN_VEHICLE, false);
+                if(isInVehicle == true){
+                    if(inVehicle == false){
+                        Toast.makeText(getApplicationContext(), "We've detected that you're in a vehicle. While this is true, any movement will not be counted.", Toast.LENGTH_LONG).show();
+                    }
+                }
+                inVehicle = isInVehicle;
             }
         };
 
@@ -186,7 +160,7 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     @Override
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
-        setDestination();
+        setDestinations();
 //        try {
 //            fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
 //                @Override
@@ -212,84 +186,57 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
 
     // SET DESTINATION
-    public void setDestination() {
+    public void setDestinations() {
 
 
         LatLng desUni = new LatLng(55.370675, 10.428067);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desUni)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("SDU"));
 
         LatLng desBilka = new LatLng(55.378227, 10.431294);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desBilka)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Bilka"));
 
 
         LatLng desIkea = new LatLng(55.380549, 10.429609);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desIkea)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("IKEA"));
 
 
         LatLng desElgiganten = new LatLng(55.381910, 10.424708);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desElgiganten)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Elgiganten"));
 
         LatLng desRC = new LatLng(55.383743, 10.426433);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desRC)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                .title("RosengårdCentret"));
+                .title("Rosengårdcentret"));
 
 
         LatLng desTEK = new LatLng(55.367259, 10.432076);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desTEK)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Det Tekniske Fakultet"));
 
 
         LatLng desOCC = new LatLng(55.371429, 10.449715);
-        mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(desOCC)
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                .title("Odensec Congres Center"));
+                .title("Odense Congress Center"));
 
     }
 
-
-
-
-    @Override
-    protected void onPostCreate(Bundle savedInstanceState) {
-        super.onPostCreate(savedInstanceState);
-        // Sync the toggle state after onRestoreInstanceState has occurred.
-        mDrawerToggle.syncState();
-    }
-
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        mDrawerToggle.onConfigurationChanged(newConfig);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Pass the event to ActionBarDrawerToggle, if it returns
-        // true, then it has handled the app icon touch event
-        if (mDrawerToggle.onOptionsItemSelected(item)) {
-            return true;
-        }
-        // Handle your other action bar items...
-
-        return super.onOptionsItemSelected(item);
-    }
 
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -375,50 +322,28 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
         }
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15));
 
-        /* Calculate distance approximately every 15 seconds */
-        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 > 15){
-            if(!inVehicle){
+        /* Calculate distance approximately every 30 seconds */
+        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 >= 30){
+            if(!inVehicle) {
                 final double distanceTravelled = previousLocation.distanceTo(location);
-                totalDistance += distanceTravelled;
-                previousLocation = location;
+
                 final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
-                if(totalDistance > 1000) {
+                if(distanceTravelled >= 5){
+                    previousLocation = location;
                     userReference.addListenerForSingleValueEvent(new ValueEventListener() {
-
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
-                            Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                            Long newScore = previousScore + 1;
-                            userReference.child("score").setValue(newScore);
-                            totalDistance = totalDistance - 1000;
+                            Double previousDistance = Double.valueOf((String) dataSnapshot.child("totalDistance").getValue());
+                            userReference.child("totalDistance").setValue(String.valueOf(previousDistance + distanceTravelled));
                         }
 
                         @Override
                         public void onCancelled(DatabaseError databaseError) {
-
                         }
                     });
                 }
 
-            if(totalDistance == 5000) {
-                userReference.addListenerForSingleValueEvent(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                        Long newScore = previousScore+10;
-                        userReference.child("score").setValue(newScore);
-
-                        //Må kun udføres en gang dagligt!!
-
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-
-                    }
-                });
-            }
             }
         }
     }
@@ -448,16 +373,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onDestroy() {
         super.onDestroy();
         stopLocationUpdates();
+        ActivityRecognition.ActivityRecognitionApi.removeActivityUpdates(mGoogleApiClient, pi);
         mGoogleApiClient.disconnect();
         unregisterReceiver(activityReceiver);
-        ActivityRecognition.ActivityRecognitionApi.removeActivityUpdates(mGoogleApiClient, pi);
         pi.cancel();
     }
 
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState){
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
-        savedInstanceState.putDouble(TOTAL_DISTANCE_KEY, totalDistance);
         super.onSaveInstanceState(savedInstanceState);
     }
 }

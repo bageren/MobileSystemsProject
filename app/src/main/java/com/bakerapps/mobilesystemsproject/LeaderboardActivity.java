@@ -1,9 +1,11 @@
 package com.bakerapps.mobilesystemsproject;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -20,7 +22,7 @@ import com.google.firebase.database.ValueEventListener;
 import java.util.ArrayList;
 import java.util.Collections;
 
-public class LeaderboardActivity extends AppCompatActivity {
+public class LeaderboardActivity extends DrawerActivity {
 
     private TextView txtMyScore;
     private ListView listLeaderboard;
@@ -33,7 +35,10 @@ public class LeaderboardActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_leaderboard);
+        //setContentView(R.layout.activity_leaderboard);
+        LayoutInflater inflater = (LayoutInflater) this.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View contentView = inflater.inflate(R.layout.activity_leaderboard, null, false);
+        mDrawerLayout.addView(contentView, 0);
 
 
         SharedPreferences prefs = getSharedPreferences("BikeLife_Preferences", MODE_PRIVATE);
