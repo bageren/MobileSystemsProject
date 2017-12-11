@@ -29,6 +29,7 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
@@ -39,6 +40,12 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.Date;
+
 public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
         LocationListener {
@@ -48,6 +55,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     private static String[] PERMISSION_LOCATIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
     public static final String ACTION_ACTIVITY_RECOGNIZED = "com.bakerapps.mobilesystemsproject.action.ACTIVITY_RECOGNIZED";
     public static final String EXTRA_IN_VEHICLE = "com.bakerapps.activityrecognition.extra.IN_VEHICLE";
+    public static final String LAST_VISIT = "lastVisit";
+    public static final String VISITED_DESTS_LIST = "visitedDestsList";
 
     private static final String REQUESTING_LOCATION_UPDATES_KEY = "requestingLocationUpdatesBoolean";
 
@@ -65,6 +74,10 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     private BroadcastReceiver activityReceiver;
     private PendingIntent pi;
     private boolean inVehicle = false;
+
+    private ArrayList<Marker> dest;
+    private ArrayList<String> visitedDests = new ArrayList<>();
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +97,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
             Log.i("NAME", prefs.getString("userName", null));
         }
 
+
         myDatabase = FirebaseDatabase.getInstance().getReference();
         userName = prefs.getString("userName", null);
 
@@ -91,6 +105,11 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
             if(savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)){
                 mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
             }
+
+            if(savedInstanceState.keySet().contains(VISITED_DESTS_LIST)){
+                visitedDests = savedInstanceState.getStringArrayList(VISITED_DESTS_LIST);
+            }
+
         }
 
         activityReceiver = new BroadcastReceiver() {
@@ -174,53 +193,58 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     public void setDestinations() {
 
 
-        LatLng desUni = new LatLng(55.370675, 10.428067);
-        mMap.addMarker(new MarkerOptions()
-                .position(desUni)
+        Marker desUni = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.370675, 10.428067))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("SDU"));
 
-        LatLng desBilka = new LatLng(55.378227, 10.431294);
-        mMap.addMarker(new MarkerOptions()
-                .position(desBilka)
+        Marker desBilka = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.378227, 10.431294))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Bilka"));
 
-
-        LatLng desIkea = new LatLng(55.380549, 10.429609);
-        mMap.addMarker(new MarkerOptions()
-                .position(desIkea)
+        Marker desIkea = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.380549, 10.429609))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("IKEA"));
 
 
-        LatLng desElgiganten = new LatLng(55.381910, 10.424708);
-        mMap.addMarker(new MarkerOptions()
-                .position(desElgiganten)
+        Marker desElgiganten = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.381910, 10.424708))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Elgiganten"));
 
-        LatLng desRC = new LatLng(55.383743, 10.426433);
-        mMap.addMarker(new MarkerOptions()
-                .position(desRC)
+        Marker desRC = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.383743, 10.426433))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Rosengårdcentret"));
 
 
-        LatLng desTEK = new LatLng(55.367259, 10.432076);
-        mMap.addMarker(new MarkerOptions()
-                .position(desTEK)
+        Marker desTEK = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.367259, 10.432076))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Det Tekniske Fakultet"));
 
 
-        LatLng desOCC = new LatLng(55.371429, 10.449715);
-        mMap.addMarker(new MarkerOptions()
-                .position(desOCC)
+        Marker desOCC = mMap.addMarker(new MarkerOptions()
+                .position(new LatLng(55.371429, 10.449715))
                 .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
                 .title("Odense Congress Center"));
 
+
+
+        dest = new ArrayList<>();
+        dest.add(desUni);
+        dest.add(desBilka);
+        dest.add(desIkea);
+        dest.add(desElgiganten);
+        dest.add(desRC);
+        dest.add(desTEK);
+        dest.add(desOCC);
+
     }
+
+
 
 
     protected synchronized void buildGoogleApiClient() {
@@ -302,13 +326,67 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         } else {
             mCurrentLocationMarker = mMap.addMarker(new MarkerOptions()
                     .position(userPos)
-                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
+                    .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                     .title("Current location"));
         }
         mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15));
 
+        final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
+
+        float[]results = new float[1];
+
+        Calendar currentDate = Calendar.getInstance();
+
+        if(prefs.getInt(LAST_VISIT,0) != currentDate.get(Calendar.DAY_OF_YEAR)){
+
+            prefs.edit().putInt(LAST_VISIT, currentDate.get(Calendar.DAY_OF_YEAR)).apply();
+            visitedDests.clear();
+            for(Marker marker : dest){
+
+                marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
+
+
+            }
+
+        }
+
+        for(final Marker marker : dest){
+            if(!visitedDests.contains(dest.toString())){
+
+                location.distanceBetween(location.getLatitude(),location.getLongitude(),marker.getPosition().latitude, marker.getPosition().longitude,results);
+                if(results[0]<=10) {
+
+                    userReference.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(DataSnapshot dataSnapshot) {
+
+                            Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                            Long newScore = previousScore + 2;
+                            userReference.child("score").setValue(newScore);
+
+                            visitedDests.add(marker.getPosition().toString());
+                            marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
+
+
+                        }
+
+                        @Override
+                        public void onCancelled(DatabaseError databaseError) {
+                        }
+                    });
+
+                }
+
+            }
+
+        }
+
+
         /* Calculate distance approximately every 30 seconds */
         if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 >= 30){
+            if(!inVehicle) {
+                final double distanceTravelled = previousLocation.distanceTo(location);
+
             final double distanceTravelled = previousLocation.distanceTo(location);
             previousLocation = location;
             if(!inVehicle) {
@@ -330,6 +408,9 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
             }
         }
+
+
+
     }
 
     @Override
@@ -366,6 +447,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     @Override
     public void onSaveInstanceState(Bundle savedInstanceState){
         savedInstanceState.putBoolean(REQUESTING_LOCATION_UPDATES_KEY, mRequestingLocationUpdates);
+        savedInstanceState.putStringArrayList(VISITED_DESTS_LIST,visitedDests);
         super.onSaveInstanceState(savedInstanceState);
     }
 }
