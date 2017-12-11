@@ -384,14 +384,9 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
         /* Calculate distance approximately every 30 seconds */
         if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 >= 30){
-            if(!inVehicle) {
-                final double distanceTravelled = previousLocation.distanceTo(location);
-
             final double distanceTravelled = previousLocation.distanceTo(location);
             previousLocation = location;
             if(!inVehicle) {
-                final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
-
                 if(distanceTravelled >= 5){
                     userReference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
