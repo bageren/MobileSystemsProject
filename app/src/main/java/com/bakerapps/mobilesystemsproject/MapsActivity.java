@@ -34,6 +34,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -101,12 +102,12 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         myDatabase = FirebaseDatabase.getInstance().getReference();
         userName = prefs.getString("userName", null);
 
-        if(savedInstanceState != null){
-            if(savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)){
+        if (savedInstanceState != null) {
+            if (savedInstanceState.keySet().contains(REQUESTING_LOCATION_UPDATES_KEY)) {
                 mRequestingLocationUpdates = savedInstanceState.getBoolean(REQUESTING_LOCATION_UPDATES_KEY);
             }
 
-            if(savedInstanceState.keySet().contains(VISITED_DESTS_LIST)){
+            if (savedInstanceState.keySet().contains(VISITED_DESTS_LIST)) {
                 visitedDests = savedInstanceState.getStringArrayList(VISITED_DESTS_LIST);
             }
 
@@ -116,8 +117,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
             @Override
             public void onReceive(Context context, Intent intent) {
                 boolean isInVehicle = intent.getBooleanExtra(EXTRA_IN_VEHICLE, false);
-                if(isInVehicle == true){
-                    if(inVehicle == false){
+                if (isInVehicle == true) {
+                    if (inVehicle == false) {
                         Toast.makeText(getApplicationContext(), "We've detected that you're in a vehicle. While this is true, any movement will not be counted.", Toast.LENGTH_LONG).show();
                     }
                 }
@@ -126,7 +127,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         };
 
         IntentFilter filter = new IntentFilter();
-        filter.addAction( ACTION_ACTIVITY_RECOGNIZED );
+        filter.addAction(ACTION_ACTIVITY_RECOGNIZED);
 
         registerReceiver(activityReceiver, filter);
 
@@ -147,11 +148,6 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     }
 
 
-
-
-
-
-
     /**
      * Manipulates the map once available.
      * This callback is triggered when the map is ready to be used.
@@ -165,6 +161,27 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     public void onMapReady(GoogleMap googleMap) {
         mMap = googleMap;
         setDestinations();
+
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    MapsActivity.this,
+                    PERMISSION_LOCATIONS,
+                    REQUEST_LOCATIONS
+            );
+            return;
+        }
+
+        fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
+            @Override
+            public void onSuccess(Location location) {
+
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(),location.getLongitude()), 15));
+
+
+
+            }
+        });
+
 //        try {
 //            fusedLocationClient.getLastLocation().addOnSuccessListener(new OnSuccessListener<Location>() {
 //                @Override
@@ -329,7 +346,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE))
                     .title("Current location"));
         }
-        mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15));
+      //  mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(userPos, 15)); //Slet: Den bliver centreret til current location
+
 
         final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
