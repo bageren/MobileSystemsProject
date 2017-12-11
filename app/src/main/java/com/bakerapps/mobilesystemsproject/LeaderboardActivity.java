@@ -80,7 +80,6 @@ public class LeaderboardActivity extends DrawerActivity {
                 for(DataSnapshot user : dataSnapshot.getChildren()){
                     scores.add(user.child("displayName").getValue() + ": " + user.child("score").getValue());
                 }
-                Collections.reverse(scores);
                 ArrayAdapter leaderboardAdapter = new ArrayAdapter(LeaderboardActivity.this, android.R.layout.simple_list_item_1, scores);
                 listLeaderboard.setAdapter(leaderboardAdapter);
                 loadingBar.setVisibility(View.GONE);

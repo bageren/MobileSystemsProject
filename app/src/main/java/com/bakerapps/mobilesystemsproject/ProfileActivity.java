@@ -71,13 +71,12 @@ public class ProfileActivity extends DrawerActivity {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 Long userScore = (Long) dataSnapshot.child("score").getValue();
-                Log.i("LOL", dataSnapshot.toString());
                 userDistance = Double.valueOf((String) dataSnapshot.child("totalDistance").getValue());
 
                 txtPoints.setText(String.valueOf(userScore));
                 txtDistance.setText(String.valueOf(round(userDistance, 2)));
+                int increment = Math.abs((userDistance.intValue() %1000) - progressOneKm.getProgress());
 
-                int increment = Math.abs(userDistance.intValue() % 1000) - progressOneKm.getProgress();
                 if((progressOneKm.getProgress() + increment) > progressOneKm.getMax()){
                     //give point
                     Long previousScore = (Long) dataSnapshot.child("score").getValue();
@@ -93,7 +92,7 @@ public class ProfileActivity extends DrawerActivity {
                         progressFiveKm.setVisibility(View.VISIBLE);
                         txtCompleted.setVisibility(View.GONE);
                     }
-                    increment = Math.abs(userDistance.intValue() % 5000) - progressFiveKm.getProgress();
+                    increment = Math.abs((userDistance.intValue() % 5000) - progressFiveKm.getProgress());
                     if((progressFiveKm.getProgress() + increment) > progressFiveKm.getMax()){
                         //give point
                         Long previousScore = (Long) dataSnapshot.child("score").getValue();

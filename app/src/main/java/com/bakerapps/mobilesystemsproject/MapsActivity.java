@@ -1,8 +1,6 @@
 package com.bakerapps.mobilesystemsproject;
 
-import android.*;
 import android.Manifest;
-import android.app.Activity;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -10,22 +8,14 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
-import android.content.res.Configuration;
 import android.location.Location;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.ContextCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
-import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -43,16 +33,11 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Calendar;
 
 public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -130,8 +115,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
         mLocationRequest = LocationRequest.create();
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
+        mLocationRequest.setInterval(15000);
+        mLocationRequest.setFastestInterval(10000);
 
         buildGoogleApiClient();
         mGoogleApiClient.connect();
@@ -290,7 +275,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         }
         Intent i = new Intent(this,ActivityRecognitionService.class);
         pi = PendingIntent.getService(this, 0, i, PendingIntent.FLAG_UPDATE_CURRENT);
-        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates( mGoogleApiClient, 10000, pi);
+        ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates( mGoogleApiClient, 25000, pi);
     }
 
     @Override
@@ -305,7 +290,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
     @Override
     public void onLocationChanged(final Location location) {
-        Log.i("LOCATION", "CHANGED");
+        //Log.i("LOCATION", "CHANGED");
         if(previousLocation == null) previousLocation = location;
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
@@ -324,13 +309,12 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
         /* Calculate distance approximately every 30 seconds */
         if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 >= 30){
+            final double distanceTravelled = previousLocation.distanceTo(location);
+            previousLocation = location;
             if(!inVehicle) {
-                final double distanceTravelled = previousLocation.distanceTo(location);
-
                 final DatabaseReference userReference = myDatabase.child("users").child(userName.toLowerCase());
 
                 if(distanceTravelled >= 5){
-                    previousLocation = location;
                     userReference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
