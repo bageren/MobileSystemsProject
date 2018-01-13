@@ -18,6 +18,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Toast;
 
+import com.google.firebase.perf.FirebasePerformance;
+import com.google.firebase.perf.metrics.AddTrace;
+import com.google.firebase.perf.metrics.Trace;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.ActivityRecognition;
@@ -46,6 +49,8 @@ import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+
+import static com.bakerapps.mobilesystemsproject.ProfileActivity.FIVE_KM_COMPLETION_DAY;
 
 public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
@@ -79,6 +84,10 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     private ArrayList<Marker> dest;
     private ArrayList<String> visitedDests = new ArrayList<>();
 
+    private int progress = 0;
+    private final int oneKilometer = 1000;
+    private final int fiveKilometers = 5000;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -94,8 +103,9 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         if (prefs.getString("userName", null) == null) {
             Intent intent = new Intent(this, WelcomeActivity.class);
             startActivity(intent);
+            return;
         } else {
-            Log.i("NAME", prefs.getString("userName", null));
+            Log.i("NAME", prefs.getString("userName", "null"));
         }
 
 
@@ -117,8 +127,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
             @Override
             public void onReceive(Context context, Intent intent) {
                 boolean isInVehicle = intent.getBooleanExtra(EXTRA_IN_VEHICLE, false);
-                if (isInVehicle == true) {
-                    if (inVehicle == false) {
+                if (isInVehicle) {
+                    if (!inVehicle) {
                         Toast.makeText(getApplicationContext(), "We've detected that you're in a vehicle. While this is true, any movement will not be counted.", Toast.LENGTH_LONG).show();
                     }
                 }
@@ -291,7 +301,7 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
                                            String permissions[], int[] grantResults) {
         switch (requestCode) {
             case REQUEST_LOCATIONS: {
-                if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
                     // permission was granted, yay!
                     startLocationUpdates();
@@ -330,8 +340,8 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
     }
 
     @Override
+    @AddTrace(name = "onLocationChangedTrace", enabled = true)
     public void onLocationChanged(final Location location) {
-        //Log.i("LOCATION", "CHANGED");
         if(previousLocation == null) previousLocation = location;
         double latitude = location.getLatitude();
         double longitude = location.getLongitude();
@@ -354,38 +364,26 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
         float[]results = new float[1];
 
         Calendar currentDate = Calendar.getInstance();
-
-        if(prefs.getInt(LAST_VISIT,0) != currentDate.get(Calendar.DAY_OF_YEAR)){
-
+        if(prefs.getInt(LAST_VISIT,currentDate.get(Calendar.DAY_OF_YEAR)) != currentDate.get(Calendar.DAY_OF_YEAR)){
             prefs.edit().putInt(LAST_VISIT, currentDate.get(Calendar.DAY_OF_YEAR)).apply();
             visitedDests.clear();
             for(Marker marker : dest){
-
                 marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN));
-
-
             }
-
         }
 
         for(final Marker marker : dest){
             if(!visitedDests.contains(dest.toString())){
-
-                location.distanceBetween(location.getLatitude(),location.getLongitude(),marker.getPosition().latitude, marker.getPosition().longitude,results);
+                Location.distanceBetween(location.getLatitude(),location.getLongitude(),marker.getPosition().latitude, marker.getPosition().longitude,results);
                 if(results[0]<=10) {
-
                     userReference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
-
                             Long previousScore = (Long) dataSnapshot.child("score").getValue();
                             Long newScore = previousScore + 2;
                             userReference.child("score").setValue(newScore);
-
                             visitedDests.add(marker.getPosition().toString());
                             marker.setIcon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED));
-
-
                         }
 
                         @Override
@@ -401,16 +399,35 @@ public class MapsActivity extends DrawerActivity implements OnMapReadyCallback, 
 
 
         /* Calculate distance approximately every 30 seconds */
-        if((location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000 >= 30){
+        long timeInSeconds = (location.getElapsedRealtimeNanos()-previousLocation.getElapsedRealtimeNanos()) / 1000000000;
+        if(timeInSeconds >= 30){
             final double distanceTravelled = previousLocation.distanceTo(location);
             previousLocation = location;
             if(!inVehicle) {
-                if(distanceTravelled >= 5){
+                if(distanceTravelled >= 15){
                     userReference.addListenerForSingleValueEvent(new ValueEventListener() {
                         @Override
                         public void onDataChange(DataSnapshot dataSnapshot) {
                             Double previousDistance = Double.valueOf((String) dataSnapshot.child("totalDistance").getValue());
-                            userReference.child("totalDistance").setValue(String.valueOf(previousDistance + distanceTravelled));
+                            Double newDistance = previousDistance + distanceTravelled;
+                            userReference.child("totalDistance").setValue(String.valueOf(newDistance));
+
+                            if(((previousDistance % oneKilometer) + distanceTravelled) > oneKilometer){
+                                //give point
+                                Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                                Long newScore = previousScore + 1;
+                                userReference.child("score").setValue(newScore);
+                            }
+                            Calendar currentDate = Calendar.getInstance();
+                            if(prefs.getInt(FIVE_KM_COMPLETION_DAY, 0) != currentDate.get(Calendar.DAY_OF_YEAR)) {
+                                if (((previousDistance % fiveKilometers) + distanceTravelled) > fiveKilometers) {
+                                    //give points
+                                    Long previousScore = (Long) dataSnapshot.child("score").getValue();
+                                    Long newScore = previousScore + 5;
+                                    userReference.child("score").setValue(newScore);
+                                    prefs.edit().putInt(FIVE_KM_COMPLETION_DAY, currentDate.get(Calendar.DAY_OF_YEAR)).apply();
+                                }
+                            }
                         }
 
                         @Override

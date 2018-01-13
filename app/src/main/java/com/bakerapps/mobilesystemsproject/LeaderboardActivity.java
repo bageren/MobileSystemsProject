@@ -70,17 +70,18 @@ public class LeaderboardActivity extends DrawerActivity {
 
 
 
-        Query leaderboardRef = myDatabase.child("users").orderByValue().limitToLast(10);
+        Query leaderboardRef = myDatabase.child("users").orderByChild("score").limitToLast(10);
 
         leaderboardRef.addValueEventListener(new ValueEventListener() {
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
                 scores.clear();
+                long position = dataSnapshot.getChildrenCount();
                 for(DataSnapshot user : dataSnapshot.getChildren()){
-                    scores.add(user.child("displayName").getValue() + ": " + user.child("score").getValue());
+                    scores.add(position + ". " + user.child("displayName").getValue() + ": " + user.child("score").getValue());
+                    position--;
                 }
-
-
+                Collections.reverse(scores);
                 ArrayAdapter leaderboardAdapter = new ArrayAdapter(LeaderboardActivity.this, android.R.layout.simple_list_item_1, scores);
                 listLeaderboard.setAdapter(leaderboardAdapter);
                 loadingBar.setVisibility(View.GONE);

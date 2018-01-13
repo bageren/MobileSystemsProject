@@ -66,7 +66,7 @@ public class ProfileActivity extends DrawerActivity {
         userReference = myDatabase.child("users").child(userName.toLowerCase());
         txtUserName.setText(userName);
 
-        listener = userReference.addValueEventListener(new ValueEventListener(){
+        listener = new ValueEventListener(){
 
             @Override
             public void onDataChange(DataSnapshot dataSnapshot) {
@@ -75,36 +75,17 @@ public class ProfileActivity extends DrawerActivity {
 
                 txtPoints.setText(String.valueOf(userScore));
                 txtDistance.setText(String.valueOf(round(userDistance, 2)));
-                int increment = Math.abs((userDistance.intValue() %1000) - progressOneKm.getProgress());
 
-                if((progressOneKm.getProgress() + increment) > progressOneKm.getMax()){
-                    //give point
-                    Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                    Long newScore = previousScore + 1;
-                    userReference.child("score").setValue(newScore);
-                    progressOneKm.setProgress(userDistance.intValue() % 1000);
-                } else {
-                    progressOneKm.incrementProgressBy(increment);
-                }
+                progressOneKm.setProgress(userDistance.intValue() % 1000);
+
                 Calendar currentDate = Calendar.getInstance();
                 if(prefs.getInt(FIVE_KM_COMPLETION_DAY, 0) != currentDate.get(Calendar.DAY_OF_YEAR)){
                     if(progressFiveKm.getVisibility() == View.GONE && txtCompleted.getVisibility() == View.VISIBLE){
                         progressFiveKm.setVisibility(View.VISIBLE);
                         txtCompleted.setVisibility(View.GONE);
                     }
-                    increment = Math.abs((userDistance.intValue() % 5000) - progressFiveKm.getProgress());
-                    if((progressFiveKm.getProgress() + increment) > progressFiveKm.getMax()){
-                        //give point
-                        Long previousScore = (Long) dataSnapshot.child("score").getValue();
-                        Long newScore = previousScore + 10;
-                        userReference.child("score").setValue(newScore);
-                        prefs.edit().putInt(FIVE_KM_COMPLETION_DAY, currentDate.get(Calendar.DAY_OF_YEAR)).apply();
-                        progressFiveKm.setProgress(userDistance.intValue() % 5000);
-                    } else {
-                        progressFiveKm.incrementProgressBy(increment);
-                    }
-                }
-                else {
+                    progressFiveKm.setProgress(userDistance.intValue() % 5000);
+                } else {
                     if(progressFiveKm.getVisibility() == View.VISIBLE && txtCompleted.getVisibility() == View.GONE){
                         progressFiveKm.setVisibility(View.GONE);
                         txtCompleted.setVisibility(View.VISIBLE);
@@ -116,7 +97,7 @@ public class ProfileActivity extends DrawerActivity {
             public void onCancelled(DatabaseError databaseError) {
 
             }
-        });
+        };
     }
 
     public double round(double value, int places) {
@@ -125,9 +106,15 @@ public class ProfileActivity extends DrawerActivity {
     }
 
     @Override
-    protected void onStop() {
+    protected void onPause() {
         userReference.removeEventListener(listener);
-        super.onStop();
+        super.onPause();
+    }
+
+    @Override
+    protected void onResume() {
+        userReference.addValueEventListener(listener);
+        super.onResume();
     }
 
 
